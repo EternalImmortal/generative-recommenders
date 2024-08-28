@@ -42,7 +42,6 @@ from generative_recommenders.modeling.similarity_module import (
     GeneralizedInteractionModule,
 )
 
-
 TIMESTAMPS_KEY = "timestamps"
 
 
@@ -50,8 +49,8 @@ class RelativeAttentionBiasModule(torch.nn.Module):
 
     @abc.abstractmethod
     def forward(
-        self,
-        all_timestamps: torch.Tensor,
+            self,
+            all_timestamps: torch.Tensor,
     ) -> torch.Tensor:
         """
         Args:
@@ -73,8 +72,8 @@ class RelativePositionalBias(RelativeAttentionBiasModule):
         )
 
     def forward(
-        self,
-        all_timestamps: torch.Tensor,
+            self,
+            all_timestamps: torch.Tensor,
     ) -> torch.Tensor:
         del all_timestamps
         n: int = self._max_seq_len
@@ -90,10 +89,10 @@ class RelativeBucketedTimeAndPositionBasedBias(RelativeAttentionBiasModule):
     """
 
     def __init__(
-        self,
-        max_seq_len: int,
-        num_buckets: int,
-        bucketization_fn: Callable[[torch.Tensor], torch.Tensor],
+            self,
+            max_seq_len: int,
+            num_buckets: int,
+            bucketization_fn: Callable[[torch.Tensor], torch.Tensor],
     ) -> None:
         super().__init__()
 
@@ -110,8 +109,8 @@ class RelativeBucketedTimeAndPositionBasedBias(RelativeAttentionBiasModule):
         )
 
     def forward(
-        self,
-        all_timestamps: torch.Tensor,
+            self,
+            all_timestamps: torch.Tensor,
     ) -> torch.Tensor:
         """
         Args:
@@ -127,7 +126,7 @@ class RelativeBucketedTimeAndPositionBasedBias(RelativeAttentionBiasModule):
 
         # [B, N + 1] to simplify tensor manipulations.
         ext_timestamps = torch.cat(
-            [all_timestamps, all_timestamps[:, N - 1 : N]], dim=1
+            [all_timestamps, all_timestamps[:, N - 1: N]], dim=1
         )
         # causal masking. Otherwise [:, :-1] - [:, 1:] works
         bucketed_timestamps = torch.clamp(
@@ -137,8 +136,8 @@ class RelativeBucketedTimeAndPositionBasedBias(RelativeAttentionBiasModule):
             min=0,
             max=self._num_buckets,
         ).detach()
-        rel_pos_bias = t[:, :, r:-r]
-        rel_ts_bias = torch.index_select(
+        rel_pos_bias = t[:, :, r:-r]  # 相对位置偏差
+        rel_ts_bias = torch.index_select(  # 相对时间戳偏差
             self._ts_w, dim=0, index=bucketed_timestamps.view(-1)
         ).view(B, N, N)
         return rel_pos_bias + rel_ts_bias
@@ -148,19 +147,19 @@ HSTUCacheState = Tuple[torch.Tensor, torch.Tensor, torch.Tensor, torch.Tensor]
 
 
 def _hstu_attention_maybe_from_cache(
-    num_heads: int,
-    attention_dim: int,
-    linear_dim: int,
-    q: torch.Tensor,
-    k: torch.Tensor,
-    v: torch.Tensor,
-    cached_q: Optional[torch.Tensor],
-    cached_k: Optional[torch.Tensor],
-    delta_x_offsets: Optional[Tuple[torch.Tensor, torch.Tensor]],
-    x_offsets: torch.Tensor,
-    all_timestamps: Optional[torch.Tensor],
-    invalid_attn_mask: torch.Tensor,
-    rel_attn_bias: RelativeAttentionBiasModule,
+        num_heads: int,
+        attention_dim: int,
+        linear_dim: int,
+        q: torch.Tensor,
+        k: torch.Tensor,
+        v: torch.Tensor,
+        cached_q: Optional[torch.Tensor],
+        cached_k: Optional[torch.Tensor],
+        delta_x_offsets: Optional[Tuple[torch.Tensor, torch.Tensor]],
+        x_offsets: torch.Tensor,
+        all_timestamps: Optional[torch.Tensor],
+        invalid_attn_mask: torch.Tensor,
+        rel_attn_bias: RelativeAttentionBiasModule,
 ) -> Tuple[torch.Tensor, torch.Tensor, torch.Tensor]:
     B: int = x_offsets.size(0) - 1
     n: int = invalid_attn_mask.size(-1)
@@ -225,20 +224,20 @@ def _hstu_attention_maybe_from_cache(
 
 class SequentialTransductionUnitJagged(torch.nn.Module):
     def __init__(
-        self,
-        embedding_dim: int,
-        linear_hidden_dim: int,
-        attention_dim: int,
-        dropout_ratio: float,
-        attn_dropout_ratio: float,
-        num_heads: int,
-        linear_activation: str,
-        relative_attention_bias_module: Optional[RelativeAttentionBiasModule] = None,
-        normalization: str = "rel_bias",
-        linear_config: str = "uvqk",
-        concat_ua: bool = False,
-        epsilon: float = 1e-6,
-        max_length: Optional[int] = None,
+            self,
+            embedding_dim: int,
+            linear_hidden_dim: int,
+            attention_dim: int,
+            dropout_ratio: float,
+            attn_dropout_ratio: float,
+            num_heads: int,
+            linear_activation: str,
+            relative_attention_bias_module: Optional[RelativeAttentionBiasModule] = None,
+            normalization: str = "rel_bias",
+            linear_config: str = "uvqk",
+            concat_ua: bool = False,
+            epsilon: float = 1e-6,
+            max_length: Optional[int] = None,
     ) -> None:
         super().__init__()
         self._embedding_dim: int = embedding_dim
@@ -282,14 +281,14 @@ class SequentialTransductionUnitJagged(torch.nn.Module):
         )
 
     def forward(  # pyre-ignore [3]
-        self,
-        x: torch.Tensor,
-        x_offsets: torch.Tensor,
-        all_timestamps: Optional[torch.Tensor],
-        invalid_attn_mask: torch.Tensor,
-        delta_x_offsets: Optional[Tuple[torch.Tensor, torch.Tensor]] = None,
-        cache: Optional[HSTUCacheState] = None,
-        return_cache_states: bool = False,
+            self,
+            x: torch.Tensor,
+            x_offsets: torch.Tensor,
+            all_timestamps: Optional[torch.Tensor],
+            invalid_attn_mask: torch.Tensor,
+            delta_x_offsets: Optional[Tuple[torch.Tensor, torch.Tensor]] = None,
+            cache: Optional[HSTUCacheState] = None,
+            return_cache_states: bool = False,
     ):
         """
         Args:
@@ -423,14 +422,14 @@ class SequentialTransductionUnitJagged(torch.nn.Module):
             o_input = u * self._norm_attn_output(attn_output)
 
         new_outputs = (
-            self._o(
-                F.dropout(
-                    o_input,
-                    p=self._dropout_ratio,
-                    training=self.training,
+                self._o(
+                    F.dropout(
+                        o_input,
+                        p=self._dropout_ratio,
+                        training=self.training,
+                    )
                 )
-            )
-            + x
+                + x
         )
 
         if delta_x_offsets is not None:
@@ -447,9 +446,9 @@ class SequentialTransductionUnitJagged(torch.nn.Module):
 class HSTUJagged(torch.nn.Module):
 
     def __init__(
-        self,
-        modules: List[SequentialTransductionUnitJagged],
-        autocast_dtype: Optional[torch.dtype],
+            self,
+            modules: List[SequentialTransductionUnitJagged],
+            autocast_dtype: Optional[torch.dtype],
     ) -> None:
         super().__init__()
 
@@ -459,14 +458,14 @@ class HSTUJagged(torch.nn.Module):
         self._autocast_dtype: Optional[torch.dtype] = autocast_dtype
 
     def jagged_forward(
-        self,
-        x: torch.Tensor,
-        x_offsets: torch.Tensor,
-        all_timestamps: Optional[torch.Tensor],
-        invalid_attn_mask: torch.Tensor,
-        delta_x_offsets: Optional[Tuple[torch.Tensor, torch.Tensor]] = None,
-        cache: Optional[List[HSTUCacheState]] = None,
-        return_cache_states: bool = False,
+            self,
+            x: torch.Tensor,
+            x_offsets: torch.Tensor,
+            all_timestamps: Optional[torch.Tensor],
+            invalid_attn_mask: torch.Tensor,
+            delta_x_offsets: Optional[Tuple[torch.Tensor, torch.Tensor]] = None,
+            cache: Optional[List[HSTUCacheState]] = None,
+            return_cache_states: bool = False,
     ) -> Tuple[torch.Tensor, List[HSTUCacheState]]:
         """
         Args:
@@ -482,9 +481,9 @@ class HSTUJagged(torch.nn.Module):
         cache_states: List[HSTUCacheState] = []
 
         with torch.autocast(
-            "cuda",
-            enabled=self._autocast_dtype is not None,
-            dtype=self._autocast_dtype or torch.float16,
+                "cuda",
+                enabled=self._autocast_dtype is not None,
+                dtype=self._autocast_dtype or torch.float16,
         ):
             for i, layer in enumerate(self._attention_layers):
                 x, cache_states_i = layer(
@@ -502,14 +501,14 @@ class HSTUJagged(torch.nn.Module):
         return x, cache_states
 
     def forward(
-        self,
-        x: torch.Tensor,
-        x_offsets: torch.Tensor,
-        all_timestamps: Optional[torch.Tensor],
-        invalid_attn_mask: torch.Tensor,
-        delta_x_offsets: Optional[Tuple[torch.Tensor, torch.Tensor]] = None,
-        cache: Optional[List[HSTUCacheState]] = None,
-        return_cache_states: bool = False,
+            self,
+            x: torch.Tensor,
+            x_offsets: torch.Tensor,
+            all_timestamps: Optional[torch.Tensor],
+            invalid_attn_mask: torch.Tensor,
+            delta_x_offsets: Optional[Tuple[torch.Tensor, torch.Tensor]] = None,
+            cache: Optional[List[HSTUCacheState]] = None,
+            return_cache_states: bool = False,
     ) -> Tuple[torch.Tensor, List[HSTUCacheState]]:
         """
         Args:
@@ -553,26 +552,26 @@ class HSTU(GeneralizedInteractionModule):
     """
 
     def __init__(
-        self,
-        max_sequence_len: int,
-        max_output_len: int,
-        embedding_dim: int,
-        num_blocks: int,
-        num_heads: int,
-        linear_dim: int,
-        attention_dim: int,
-        normalization: str,
-        linear_config: str,
-        linear_activation: str,
-        linear_dropout_rate: float,
-        attn_dropout_rate: float,
-        embedding_module: EmbeddingModule,
-        similarity_module: NDPModule,
-        input_features_preproc_module: InputFeaturesPreprocessorModule,
-        output_postproc_module: OutputPostprocessorModule,
-        enable_relative_attention_bias: bool = True,
-        concat_ua: bool = False,
-        verbose: bool = True,
+            self,
+            max_sequence_len: int,
+            max_output_len: int,
+            embedding_dim: int,
+            num_blocks: int,
+            num_heads: int,
+            linear_dim: int,
+            attention_dim: int,
+            normalization: str,
+            linear_config: str,
+            linear_activation: str,
+            linear_dropout_rate: float,
+            attn_dropout_rate: float,
+            embedding_module: EmbeddingModule,
+            similarity_module: NDPModule,
+            input_features_preproc_module: InputFeaturesPreprocessorModule,
+            output_postproc_module: OutputPostprocessorModule,
+            enable_relative_attention_bias: bool = True,
+            concat_ua: bool = False,
+            verbose: bool = True,
     ) -> None:
         super().__init__(ndp_module=similarity_module)
 
@@ -606,10 +605,10 @@ class HSTU(GeneralizedInteractionModule):
                     relative_attention_bias_module=(
                         RelativeBucketedTimeAndPositionBasedBias(
                             max_seq_len=max_sequence_len
-                            + max_output_len,  # accounts for next item.
+                                        + max_output_len,  # accounts for next item.
                             num_buckets=128,
                             bucketization_fn=lambda x: (
-                                torch.log(torch.abs(x).clamp(min=1)) / 0.301
+                                    torch.log(torch.abs(x).clamp(min=1)) / 0.301
                             ).long(),
                         )
                         if enable_relative_attention_bias
@@ -661,23 +660,23 @@ class HSTU(GeneralizedInteractionModule):
 
     def debug_str(self) -> str:
         debug_str = (
-            f"HSTU-b{self._num_blocks}-h{self._num_heads}-dqk{self._dqk}-dv{self._dv}"
-            + f"-l{self._linear_activation}d{self._linear_dropout_rate}"
-            + f"-ad{self._attn_dropout_rate}"
+                f"HSTU-b{self._num_blocks}-h{self._num_heads}-dqk{self._dqk}-dv{self._dv}"
+                + f"-l{self._linear_activation}d{self._linear_dropout_rate}"
+                + f"-ad{self._attn_dropout_rate}"
         )
         if not self._enable_relative_attention_bias:
             debug_str += "-norab"
         return debug_str
 
     def generate_user_embeddings(
-        self,
-        past_lengths: torch.Tensor,
-        past_ids: torch.Tensor,
-        past_embeddings: torch.Tensor,
-        past_payloads: Dict[str, torch.Tensor],
-        delta_x_offsets: Optional[Tuple[torch.Tensor, torch.Tensor]] = None,
-        cache: Optional[List[HSTUCacheState]] = None,
-        return_cache_states: bool = False,
+            self,
+            past_lengths: torch.Tensor,
+            past_ids: torch.Tensor,
+            past_embeddings: torch.Tensor,
+            past_payloads: Dict[str, torch.Tensor],
+            delta_x_offsets: Optional[Tuple[torch.Tensor, torch.Tensor]] = None,
+            cache: Optional[List[HSTUCacheState]] = None,
+            return_cache_states: bool = False,
     ) -> Tuple[torch.Tensor, List[HSTUCacheState]]:
         """
         [B, N] -> [B, N, D].
@@ -710,12 +709,12 @@ class HSTU(GeneralizedInteractionModule):
         return self._output_postproc(user_embeddings), cached_states
 
     def forward(
-        self,
-        past_lengths: torch.Tensor,
-        past_ids: torch.Tensor,
-        past_embeddings: torch.Tensor,
-        past_payloads: Dict[str, torch.Tensor],
-        batch_id: Optional[int] = None,
+            self,
+            past_lengths: torch.Tensor,
+            past_ids: torch.Tensor,
+            past_embeddings: torch.Tensor,
+            past_payloads: Dict[str, torch.Tensor],
+            batch_id: Optional[int] = None,
     ) -> torch.Tensor:
         """
         Runs the main encoder.
@@ -740,14 +739,14 @@ class HSTU(GeneralizedInteractionModule):
         return encoded_embeddings
 
     def _encode(
-        self,
-        past_lengths: torch.Tensor,
-        past_ids: torch.Tensor,
-        past_embeddings: torch.Tensor,
-        past_payloads: Dict[str, torch.Tensor],
-        delta_x_offsets: Optional[Tuple[torch.Tensor, torch.Tensor]],
-        cache: Optional[List[HSTUCacheState]],
-        return_cache_states: bool,
+            self,
+            past_lengths: torch.Tensor,
+            past_ids: torch.Tensor,
+            past_embeddings: torch.Tensor,
+            past_payloads: Dict[str, torch.Tensor],
+            delta_x_offsets: Optional[Tuple[torch.Tensor, torch.Tensor]],
+            cache: Optional[List[HSTUCacheState]],
+            return_cache_states: bool,
     ) -> Union[torch.Tensor, Tuple[torch.Tensor, List[HSTUCacheState]]]:
         """
         Args:
@@ -778,14 +777,14 @@ class HSTU(GeneralizedInteractionModule):
             return current_embeddings
 
     def encode(
-        self,
-        past_lengths: torch.Tensor,
-        past_ids: torch.Tensor,
-        past_embeddings: torch.Tensor,
-        past_payloads: Dict[str, torch.Tensor],
-        delta_x_offsets: Optional[Tuple[torch.Tensor, torch.Tensor]] = None,
-        cache: Optional[List[HSTUCacheState]] = None,
-        return_cache_states: bool = False,
+            self,
+            past_lengths: torch.Tensor,
+            past_ids: torch.Tensor,
+            past_embeddings: torch.Tensor,
+            past_payloads: Dict[str, torch.Tensor],
+            delta_x_offsets: Optional[Tuple[torch.Tensor, torch.Tensor]] = None,
+            cache: Optional[List[HSTUCacheState]] = None,
+            return_cache_states: bool = False,
     ) -> Union[torch.Tensor, Tuple[torch.Tensor, List[HSTUCacheState]]]:
         """
         Runs encoder to obtain the current hidden states.
